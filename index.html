@@ -105,7 +105,7 @@
                             <i class="fa-solid fa-camera text-2xl"></i>
                         </div>
                         <h3 class="font-bold text-sm sm:text-base text-slate-700 mb-1">準備開始觀測</h3>
-                        <p class="text-xs sm:text-sm text-slate-500 max-w-sm">請選擇下方「啟動視訊鏡頭」或直接「上傳本機照片」進行 AI 辨識</p>
+                        <p class="text-xs sm:text-sm text-slate-500 max-w-sm">請選擇下方「啟動視像鏡頭」或直接「上傳本機照片」進行 AI 辨識</p>
                     </div>
 
                     <video id="webcam-preview" class="hidden w-full h-full object-cover" autoplay playsinline></video>
@@ -131,7 +131,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <button id="btn-webcam" onclick="toggleWebcam()" class="flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 text-slate-700 text-xs sm:text-sm font-semibold transition-all shadow-sm active:scale-95">
                         <i class="fa-solid fa-video text-emerald-600"></i>
-                        <span>啟動視訊鏡頭</span>
+                        <span>啟動視像鏡頭</span>
                     </button>
                     
                     <label for="image-upload" class="flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 text-slate-700 text-xs sm:text-sm font-semibold cursor-pointer transition-all text-center shadow-sm active:scale-95">
@@ -423,8 +423,8 @@
                 placeholder.classList.remove('hidden');
                 videoElement.classList.add('hidden');
                 shutterBtn.classList.add('hidden');
-                btnWebcam.innerHTML = `<i class="fa-solid fa-video text-emerald-600"></i><span>啟動視訊鏡頭</span>`;
-                updateStatusBadge("視訊已終止", "bg-slate-100 text-slate-500 border-slate-200");
+                btnWebcam.innerHTML = `<i class="fa-solid fa-video text-emerald-600"></i><span>啟動視像鏡頭</span>`;
+                updateStatusBadge("視像已終止", "bg-slate-100 text-slate-500 border-slate-200");
                 disableRecordButton();
                 resetPredictions();
             } else {
@@ -439,7 +439,7 @@
                     placeholder.classList.add('hidden');
                     isWebcamOn = true;
                     activeInputSource = 'webcam';
-                    btnWebcam.innerHTML = `<i class="fa-solid fa-circle-stop text-rose-600"></i><span>關閉視訊鏡頭</span>`;
+                    btnWebcam.innerHTML = `<i class="fa-solid fa-circle-stop text-rose-600"></i><span>關閉視像鏡頭</span>`;
                     updateStatusBadge("即時觀測中", "bg-emerald-50 text-emerald-700 border-emerald-200");
                     predictionInterval = requestAnimationFrame(loopWebcamPrediction);
                     enableRecordButton();
@@ -633,7 +633,7 @@
         // 截取並鎖定當前畫面
         function captureWebcamSnapshot() {
             if (!isWebcamOn || !webcam) {
-                showToast("請先啟動視訊鏡頭！", "error");
+                showToast("請先啟動視像鏡頭！", "error");
                 return;
             }
 
@@ -660,17 +660,17 @@
         function recordToLog() {
             // 檢查是否有截圖暫存
             if (!webcamSnapshot) {
-                showToast("⚠️ 請先點擊視訊畫面內下方的「截圖鎖定」按鈕，再寫入檢測記錄！", "error");
+                showToast("⚠️ 請先點擊視像畫面內下方的「截圖鎖定」按鈕，再寫入檢測記錄！", "error");
                 return; 
             }
 
             // 若有暫存，則直接取出使用
             const capturedImageSrc = webcamSnapshot;
-            const sourceText = activeInputSource === 'webcam' ? "視訊鏡頭" : "上傳圖片";
+            const sourceText = activeInputSource === 'webcam' ? "視像鏡頭" : "上傳圖片";
 
             addSnapshotToLog(capturedImageSrc, sourceText, true, true);
 
-            // 寫入完畢後，如果是視訊鏡頭模式則清空暫存
+            // 寫入完畢後，如果是視像鏡頭模式則清空暫存
             if (activeInputSource === 'webcam') {
                 webcamSnapshot = null;
                 webcamSnapshotPredictions = null;
