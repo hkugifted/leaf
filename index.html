@@ -91,7 +91,7 @@
             <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm border-l-4 border-l-emerald-600 flex flex-col gap-4">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                     <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 text-emerald-700">
-                        <i class="fa-solid fa-video"></i> 1. 葉片影像輸入源
+                        <i class="fa-solid fa-video"></i> 1. 葉片影像輸入
                     </h2>
                     <span class="text-xs sm:text-sm px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-semibold" id="status-badge">
                         等待初始化...
@@ -156,7 +156,7 @@
 
                 <button id="btn-record" onclick="recordToLog()" disabled class="w-full mt-2 flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs sm:text-sm font-semibold cursor-not-allowed transition-all">
                     <i class="fa-solid fa-pen-to-square"></i>
-                    <span>將此辨識結果寫入「實驗日誌」</span>
+                    <span>將此辨識結果寫入檢測記錄</span>
                 </button>
             </div>
         </section>
@@ -215,22 +215,22 @@
             </div>
         </section>
 
-        <!-- 下方：實驗日誌表格 -->
+        <!-- 下方：檢測記錄表格 -->
         <section class="lg:col-span-12">
             <div class="glass-panel rounded-2xl p-4 sm:p-6 shadow-sm border-l-4 border-l-emerald-600 flex flex-col gap-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
                     <div>
                         <h2 class="text-lg sm:text-xl font-bold text-emerald-700 flex items-center gap-2">
-                            <i class="fa-solid fa-book-bookmark"></i> 3. 實驗日誌紀錄表
+                            <i class="fa-solid fa-book-bookmark"></i> 3. 檢測記錄表
                         </h2>
-                        <p class="text-xs sm:text-sm text-slate-500 mt-1">在此處管理你的觀測數據，加入病理診斷，並匯出到 CSV。</p>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-1">在此處管理你的檢測數據，加入病理診斷，並匯出到 CSV。</p>
                     </div>
                     <div class="flex gap-2 w-full sm:w-auto">
                         <button onclick="exportCSV()" class="flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all text-xs sm:text-sm shadow-md shadow-emerald-600/10 active:scale-95">
                             <i class="fa-solid fa-file-csv"></i> 匯出 CSV 數據
                         </button>
                         <button id="btn-clear-log" onclick="clearLog()" class="flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-50 border border-red-200 text-red-600 font-semibold transition-all text-xs sm:text-sm shadow-sm active:scale-95">
-                            <i class="fa-solid fa-trash-can"></i> <span id="clear-log-text">清空日誌</span>
+                            <i class="fa-solid fa-trash-can"></i> <span id="clear-log-text">清空記錄</span>
                         </button>
                     </div>
                 </div>
@@ -239,7 +239,7 @@
                     <table class="w-full text-left border-collapse min-w-[750px]">
                         <thead>
                             <tr class="bg-slate-50 text-slate-600 text-xs sm:text-sm uppercase tracking-wider border-b border-slate-200">
-                                <th class="py-3.5 px-4 font-semibold">紀錄時間</th>
+                                <th class="py-3.5 px-4 font-semibold">記錄時間</th>
                                 <th class="py-3.5 px-4 font-semibold">觀測對象</th>
                                 <th class="py-3.5 px-4 font-semibold">AI 辨識狀態</th>
                                 <th class="py-3.5 px-4 font-semibold">健康信心度</th>
@@ -252,7 +252,7 @@
                             <tr id="empty-row">
                                 <td colspan="7" class="py-8 px-4 text-center text-slate-400">
                                     <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
-                                    尚未紀錄任何觀測數據。在上方辨識葉片後，先點擊「截圖鎖定」，再點選「寫入實驗日誌」即可增加數據。
+                                    尚未記錄任何觀測數據。在上方辨識葉片後，先點擊「截圖鎖定」，再點選「寫入檢測記錄」即可增加數據。
                                 </td>
                             </tr>
                         </tbody>
@@ -650,17 +650,17 @@
                 
                 // 同步鎖定當下的 AI 信心度
                 webcamSnapshotPredictions = { ...currentPredictions };
-                showToast("📸 畫面與數據已鎖定！可以點擊下方寫入實驗日誌囉。", "success");
+                showToast("📸 畫面與數據已鎖定！可以點擊下方寫入檢測記錄。", "success");
             } catch (err) {
                 console.warn("擷取畫面失敗", err);
             }
         }
 
-        // 寫入日誌邏輯
+        // 寫入記錄邏輯
         function recordToLog() {
             // 檢查是否有截圖暫存
             if (!webcamSnapshot) {
-                showToast("⚠️ 請先點擊視訊畫面內下方的「截圖鎖定」按鈕，再寫入實驗日誌！", "error");
+                showToast("⚠️ 請先點擊視訊畫面內下方的「截圖鎖定」按鈕，再寫入檢測記錄！", "error");
                 return; 
             }
 
@@ -703,14 +703,14 @@
                 imageSrc: imgDataUrl
             });
             renderLogTable();
-            showToast("成功將辨識數據與葉片照片寫入日誌！", "success");
+            showToast("成功將辨識數據與葉片照片寫入記錄！", "success");
         }
 
         function renderLogTable() {
             const tbody = document.getElementById('log-table-body');
             tbody.innerHTML = "";
             if (experimentLogs.length === 0) {
-                tbody.innerHTML = `<tr id="empty-row"><td colspan="7" class="py-8 px-4 text-center text-slate-400"><i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>尚未紀錄任何觀測數據。</td></tr>`;
+                tbody.innerHTML = `<tr id="empty-row"><td colspan="7" class="py-8 px-4 text-center text-slate-400"><i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>尚未記錄任何觀測數據。</td></tr>`;
                 return;
             }
 
@@ -769,20 +769,20 @@
         function resetClearButton() {
             isClearConfirmMode = false;
             document.getElementById('btn-clear-log').className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-50 border border-red-200 text-red-600 font-semibold text-xs";
-            document.getElementById('clear-log-text').innerText = "清空日誌";
+            document.getElementById('clear-log-text').innerText = "清空記錄";
         }
 
         function exportCSV() {
             if (experimentLogs.length === 0) {
-                showToast("尚未紀錄任何觀測數據！", "error");
+                showToast("尚未記錄任何觀測數據！", "error");
                 return;
             }
             
-            let csvContent = "\uFEFF紀錄時間,觀測來源,AI判定狀態,健康信心度,生病信心度,現場病害診斷\n";
+            let csvContent = "\uFEFF記錄時間,觀測來源,AI判定狀態,健康信心度,生病信心度,現場病害診斷\n";
             experimentLogs.forEach(log => { csvContent += `${log.timestamp},${log.source},${log.status},${log.healthyProb},${log.sickProb},"${log.diseaseSelected}"\n`; });
             const link = document.createElement("a");
             link.setAttribute("href", URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })));
-            link.setAttribute("download", `植物葉片健康AI檢測日誌.csv`);
+            link.setAttribute("download", `植物葉片健康AI檢測記錄.csv`);
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
     </script>
