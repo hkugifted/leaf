@@ -55,18 +55,18 @@
         <!-- 左側：AI 觀測儀表板 (佔 7 格) -->
         <section class="lg:col-span-7 flex flex-col gap-4 sm:gap-6">
             
-            <!-- 核心設定：Teachable Machine 自訂模型區 -->
+            <!-- 核心設定：Teachable Machine 自訂模型區 (修改處：預設關閉) -->
             <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm border-l-4 border-l-emerald-600 flex flex-col gap-3">
                 <div class="flex justify-between items-center cursor-pointer" onclick="toggleSettings()">
                     <h3 class="text-sm sm:text-base font-bold text-slate-700 flex items-center gap-2">
                         <i class="fa-solid fa-sliders text-emerald-600"></i> ⚙️ 實驗室 AI 模型設定
                     </h3>
                     <button id="btn-toggle-settings" class="text-xs sm:text-sm text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-1 focus:outline-none">
-                        <span>收起</span> <i id="icon-toggle-settings" class="fa-solid fa-chevron-up"></i>
+                        <span>展開</span> <i id="icon-toggle-settings" class="fa-solid fa-chevron-down"></i>
                     </button>
                 </div>
                 
-                <div id="settings-content" class="flex flex-col gap-3 transition-all duration-300">
+                <div id="settings-content" class="flex flex-col gap-3 transition-all duration-300 hidden">
                     <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
                         如果你自己訓練了新的 Google Teachable Machine 圖像模型，請在下方貼上模型網址以進行切換：
                     </p>
@@ -1119,7 +1119,7 @@
         // 匯出 CSV 檔案功能 (與下拉選單選擇之病害診斷對齊)
         function exportCSV() {
             if (experimentLogs.length === 0) {
-                showToast("日誌中無任何數據可供匯出！", "error");
+                showToast("日誌中無 any 數據可供匯出！", "error");
                 return;
             }
 
