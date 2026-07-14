@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>植物葉片健康 AI 檢測平台</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 圖標 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- TensorFlow.js 與 Teachable Machine 圖像識別庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    
+    <style>
+        /* 明亮學術風漸變背景與微調 */
+        body {
+            background-color: #f8fafc;
+            background-image: radial-gradient(circle at 50% 50%, #f0fdf4 0%, #f8fafc 100%);
+        }
+        /* 亮色半透明玻璃面版 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px rgba(226, 232, 240, 0.8) solid;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen font-sans leading-relaxed text-sm sm:text-base">
+
+    <!-- 頂部導航欄 (Header) - 亮色玻璃設計 -->
+    <header class="border-b border-slate-200/80 bg-white/80 backdrop-blur sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:py-5 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3.5 w-full sm:w-auto">
+                <div class="bg-emerald-600 text-white p-2.5 sm:p-3 rounded-xl shadow-lg shadow-emerald-600/10 animate-pulse flex-shrink-0">
+                    <i class="fa-solid fa-leaf text-xl sm:text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-wider text-emerald-700">植物葉片健康 AI 檢測平台</h1>
+                </div>
+            </div>
+            <div class="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2 text-xs sm:text-sm bg-slate-100 px-3.5 py-2 rounded-full border border-slate-200">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-ping"></span>
+                    <span class="text-slate-600 font-mono font-bold">MODEL ID: <span id="header-model-id">VjZqGAb4E</span></span>
+                </div>
+                <span class="text-xs text-slate-400 border-l border-slate-300 pl-2 ml-1 hidden xs:inline">後置鏡頭模式</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-7xl mx-auto px-4 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        
+        <!-- 左側：AI 觀測儀表板 (佔 7 格) -->
+        <section class="lg:col-span-7 flex flex-col gap-4 sm:gap-6">
+            
+            <!-- 核心設定：Teachable Machine 自訂模型區 -->
+            <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm border-l-4 border-l-emerald-600 flex flex-col gap-3">
+                <div class="flex justify-between items-center cursor-pointer" onclick="toggleSettings()">
+                    <h3 class="text-sm sm:text-base font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-emerald-600"></i> ⚙️ 實驗室 AI 模型設定
+                    </h3>
+                    <button id="btn-toggle-settings" class="text-xs sm:text-sm text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-1 focus:outline-none">
+                        <span>收起</span> <i id="icon-toggle-settings" class="fa-solid fa-chevron-up"></i>
+                    </button>
+                </div>
+                
+                <div id="settings-content" class="flex flex-col gap-3 transition-all duration-300">
+                    <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                        如果你自己訓練了新的 Google Teachable Machine 圖像模型，請在下方貼上模型網址以進行切換：
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="model-url-input" 
+                               value="https://teachablemachine.withgoogle.com/models/VjZqGAb4E/" 
+                               placeholder="請貼上 https://teachablemachine.withgoogle.com/models/... 網址" 
+                               class="flex-grow bg-white border border-slate-200 focus:border-emerald-500 rounded-xl px-3.5 py-3 text-xs sm:text-sm text-slate-700 focus:outline-none transition-all">
+                        <div class="flex gap-2">
+                            <button onclick="changeModelUrl()" class="flex-grow sm:flex-initial bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 rounded-xl text-xs sm:text-sm transition-all shadow-sm active:scale-95">
+                                載入新模型
+                            </button>
+                            <button onclick="resetDefaultModel()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-3.5 py-3 rounded-xl text-xs sm:text-sm border border-slate-200 transition-all shadow-sm active:scale-95" title="還原預設模型">
+                                <i class="fa-solid fa-arrow-rotate-left"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 觀測視窗面板 -->
+            <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 text-emerald-700">
+                        <i class="fa-solid fa-video"></i> 1. 葉片影像輸入源
+                    </h2>
+                    <span class="text-xs sm:text-sm px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-semibold" id="status-badge">
+                        等待初始化...
+                    </span>
+                </div>
+
+                <!-- 影像觀測核心顯示區 - 高適應性、防溢出比例 -->
+                <div class="relative aspect-video w-full rounded-xl bg-slate-50 overflow-hidden border-2 border-dashed border-slate-200 flex flex-col items-center justify-center group">
+                    <!-- 預設提示畫面 -->
+                    <div id="placeholder-ui" class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-10">
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white flex items-center justify-center border border-slate-200 text-emerald-600 mb-3 group-hover:scale-110 transition-transform shadow-sm">
+                            <i class="fa-solid fa-camera text-2xl"></i>
+                        </div>
+                        <h3 class="font-bold text-sm sm:text-base text-slate-700 mb-1">準備開始觀測</h3>
+                        <p class="text-xs sm:text-sm text-slate-500 max-w-sm">請選擇下方「啟動視訊鏡頭」或直接「上傳本機照片」進行 AI 辨識</p>
+                    </div>
+
+                    <!-- 視訊與畫布容器 (後置鏡頭模式：移除水平翻轉) -->
+                    <video id="webcam-preview" class="hidden w-full h-full object-cover" autoplay playsinline></video>
+                    <canvas id="canvas-preview" class="hidden w-full h-full object-contain"></canvas>
+                    
+                    <!-- 實時相機拍照快閃遮罩 -->
+                    <div id="camera-flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-40"></div>
+
+                    <!-- 浮動相機快門拍照按鈕 (僅在相機啟動時顯示) -->
+                    <button id="btn-shutter" onclick="captureWebcamSnapshot()" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-5 rounded-full shadow-lg border-2 border-white active:scale-95 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-camera text-sm animate-pulse"></i>
+                        <span class="text-xs sm:text-sm tracking-wider">拍照截圖並紀錄</span>
+                    </button>
+
+                    <!-- 載入中動畫遮罩 -->
+                    <div id="loading-spinner" class="hidden absolute inset-0 bg-white/95 flex flex-col items-center justify-center z-20">
+                        <div class="relative w-14 h-14 sm:w-16 sm:h-16">
+                            <div class="absolute inset-0 rounded-full border-4 border-emerald-600/10"></div>
+                            <div class="absolute inset-0 rounded-full border-4 border-t-emerald-600 animate-spin"></div>
+                        </div>
+                        <p class="text-sm sm:text-base text-emerald-700 mt-4 font-bold tracking-widest animate-pulse" id="loading-text">載入 AI 模型中...</p>
+                    </div>
+                </div>
+
+                <!-- 影像控制按鈕區 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-webcam" onclick="toggleWebcam()" class="flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 text-slate-700 text-xs sm:text-sm font-semibold transition-all shadow-sm active:scale-95">
+                        <i class="fa-solid fa-video text-emerald-600"></i>
+                        <span>啟動視訊鏡頭</span>
+                    </button>
+                    
+                    <label for="image-upload" class="flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 text-slate-700 text-xs sm:text-sm font-semibold cursor-pointer transition-all text-center shadow-sm active:scale-95">
+                        <i class="fa-solid fa-file-image text-cyan-600"></i>
+                        <span>上載葉片圖片</span>
+                        <input type="file" id="image-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                    </label>
+                </div>
+            </div>
+
+            <!-- AI 辨識分析面板 -->
+            <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 text-emerald-700">
+                        <i class="fa-solid fa-brain text-emerald-600"></i> 2. AI 實時信心度分析
+                    </h2>
+                </div>
+
+                <!-- 1. 動態類別信心度容器 (Dynamic Class Names UI) -->
+                <div id="prediction-bars" class="flex flex-col gap-4">
+                    <p class="text-xs sm:text-sm text-slate-400 italic text-center py-2">載入模型後將自動讀取並顯示類別名稱...</p>
+                </div>
+
+                <!-- 記錄數據至日誌按鈕 -->
+                <button id="btn-record" onclick="recordToLog()" disabled class="w-full mt-2 flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 text-xs sm:text-sm font-semibold cursor-not-allowed transition-all">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>將此辨識結果寫入「實驗日誌」</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 右側：學術植物學知識 + 課程探究任務 (佔 5 格) -->
+        <section class="lg:col-span-5 flex flex-col gap-4 sm:gap-6">
+            
+            <!-- 2. 植物數據分類 (靜態資訊欄 - 灰色色系風格) -->
+            <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm border-l-4 border-l-slate-400 flex flex-col gap-3">
+                <h3 class="text-sm sm:text-base font-bold text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-tags text-slate-500"></i> 植物數據分類
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                    本平台目前完整收錄並支援以下 12 類植物物種的對應特徵與疾病數據：
+                </p>
+                <!-- 垂直自適應滾動條 -->
+                <div class="max-h-48 overflow-y-auto pr-1 space-y-1.5 text-xs sm:text-sm text-slate-600">
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🥭 <strong>芒果</strong> <em>(Mangifera indica)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🌳 <strong>阿江欖仁</strong> <em>(Terminalia arjuna)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🌿 <strong>糖膠樹</strong> <em>(Alstonia scholaris)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🍏 <strong>番石榴</strong> <em>(Psidium guajava)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🍇 <strong>海南蒲桃</strong> <em>(Syzygium cumini)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🍂 <strong>麻瘋樹</strong> <em>(Jatropha curcas)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🌱 <strong>水黃皮</strong> <em>(Pongamia pinnata)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🌿 <strong>羅勒</strong> <em>(Ocimum basilicum)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">僅限健康葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🍈 <strong>木橘</strong> <em>(Aegle marmelos)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">僅限生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🔴 <strong>石榴</strong> <em>(Punica granatum)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-100 pb-1">
+                        <span>🍋 <strong>檸檬</strong> <em>(Citrus limon)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                    <div class="flex justify-between pb-1">
+                        <span>🍁 <strong>懸鈴木</strong> <em>(Platanus orientalis)</em></span>
+                        <span class="text-[10px] sm:text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-semibold border border-slate-200">健康及生病葉片</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 植物學觀察指引 (3 & 4. 葉片病理與臨床診斷動態解鎖) -->
+            <div id="knowledge-panel" class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm border-l-4 border-l-slate-400 flex flex-col gap-4 lg:min-h-[300px]">
+                <div class="border-b border-slate-100 pb-3">
+                    <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 text-slate-700" id="knowledge-title">
+                        <i class="fa-solid fa-microscope text-slate-500"></i> 植物學觀察指引
+                    </h2>
+                </div>
+
+                <!-- 內容動態切換區 -->
+                <div id="knowledge-content" class="flex-grow flex flex-col justify-center text-slate-700 gap-4">
+                    <div class="text-center py-6 sm:py-8">
+                        <i class="fa-solid fa-seedling text-3xl sm:text-4xl text-slate-300 mb-3 block animate-bounce"></i>
+                        <p class="text-xs sm:text-sm font-medium">請使用 AI 辨識葉片健康狀態，系統將自動解鎖植物特徵與學術分析知識！</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 學生實驗探究指南 -->
+            <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm border-l-4 border-l-slate-400 flex flex-col gap-3">
+                <h3 class="text-sm sm:text-base font-bold text-slate-700 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-question text-slate-500"></i> STEAM 思考與探究任務
+                </h3>
+                <ol class="list-decimal list-inside text-xs sm:text-sm text-slate-600 flex flex-col gap-2">
+                    <li><strong class="text-slate-800">特徵分析：</strong>觀察生病葉片，除了變色，有沒有斑點或萎縮？</li>
+                    <li><strong class="text-slate-800">數據解讀：</strong>當模型信心度低於 70% 時，是哪些背景雜訊干擾了 AI？</li>
+                    <li><strong class="text-slate-800">環境假設：</strong>有哪些環境因素可能導致葉片生病？</li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- 下方：實驗日誌表格 (寬度全版 12 格) -->
+        <section class="lg:col-span-12">
+            <div class="glass-panel rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-lg sm:text-xl font-bold text-emerald-700 flex items-center gap-2">
+                            <i class="fa-solid fa-book-bookmark"></i> 3. 實驗日誌紀錄表
+                        </h2>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-1">在此處管理你的觀測數據，加入病理診斷，並匯出到 CSV 進行數據統計</p>
+                    </div>
+                    
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="exportCSV()" class="flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all text-xs sm:text-sm shadow-md shadow-emerald-600/10 active:scale-95">
+                            <i class="fa-solid fa-file-csv"></i> 匯出 CSV 數據
+                        </button>
+                        <!-- 自訂安全防爆確認按鈕 (清空按鈕) -->
+                        <button id="btn-clear-log" onclick="clearLog()" class="flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-semibold transition-all text-xs sm:text-sm shadow-sm active:scale-95" title="清空日誌">
+                            <i class="fa-solid fa-trash-can"></i> <span id="clear-log-text">清空日誌</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 數據表格容器 (RWD 自適應橫向滾動) -->
+                <div class="overflow-x-auto rounded-xl border border-slate-200/80 bg-white">
+                    <table class="w-full text-left border-collapse min-w-[750px]">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-600 text-xs sm:text-sm uppercase tracking-wider border-b border-slate-200">
+                                <th class="py-3.5 px-4 font-semibold">紀錄時間</th>
+                                <th class="py-3.5 px-4 font-semibold">觀測對象</th>
+                                <th class="py-3.5 px-4 font-semibold">AI 辨識狀態</th>
+                                <th class="py-3.5 px-4 font-semibold">健康信心度</th>
+                                <th class="py-3.5 px-4 font-semibold">生病信心度</th>
+                                <th class="py-3.5 px-4 font-semibold">現場病害診斷</th>
+                                <th class="py-3.5 px-4 font-semibold text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="log-table-body" class="text-xs sm:text-sm divide-y divide-slate-100 text-slate-700">
+                            <!-- 空資料提示 -->
+                            <tr id="empty-row">
+                                <td colspan="7" class="py-8 px-4 text-center text-slate-400">
+                                    <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
+                                    尚未紀錄任何觀測數據。在上方辨識葉片後，點選「寫入實驗日誌」或鏡頭「拍照截圖」即可增加數據。
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 頁腳 (Footer) -->
+    <footer class="border-t border-slate-200 bg-white py-6 sm:py-8 text-center text-xs text-slate-500 mt-12">
+        <p>© 2026 植物葉片健康 AI 檢測平台 - 香港大學電子學習發展實驗室</p>
+        <p class="mt-1">Powered by TensorFlow.js & Google Teachable Machine</p>
+    </footer>
+
+    <!-- 自訂大圖檢視彈窗懸浮窗 (Image Preview Modal) -->
+    <div id="image-modal" class="hidden fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-4 transition-all duration-300" onclick="closeImageModal()">
+        <div class="relative max-w-3xl max-h-[85vh] bg-white rounded-2xl p-2.5 overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+            <button onclick="closeImageModal()" class="absolute top-4 right-4 bg-black/50 text-white hover:bg-black/70 w-9 h-9 rounded-full flex items-center justify-center transition-all z-50">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <img id="modal-img" src="" class="max-w-full max-h-[80vh] rounded-xl object-contain shadow-inner">
+        </div>
+    </div>
+
+    <!-- 自訂提示氣泡提示框容器 -->
+    <div id="toast-container" class="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 max-w-sm"></div>
+
+    <script>
+        const DEFAULT_MODEL_URL = "https://teachablemachine.withgoogle.com/models/VjZqGAb4E/";
+        let currentModelUrl = DEFAULT_MODEL_URL;
+        
+        let model, webcam, maxPredictions;
+        let isWebcamOn = false;
+        let isModelLoaded = false;
+        let predictionInterval = null;
+        let currentPredictions = { healthy: 0, sick: 0 };
+        let activeInputSource = null; // 'webcam' or 'image'
+
+        // 實驗日誌數據陣列與清空按鈕安全控管
+        let experimentLogs = [];
+        let isClearConfirmMode = false;
+        let clearConfirmTimeout = null;
+
+        // 5. 下拉式選單的病害選項清單
+        const DISEASE_OPTIONS = [
+            "健康葉片",
+            "芒果 - 芒果炭疽病",
+            "阿江欖仁 - 欖仁葉斑病",
+            "糖膠樹 - 糖膠樹葉癭病",
+            "番石榴 - 番石榴炭疽病",
+            "木橘 - 木橘細菌性潰瘍病",
+            "海南蒲桃 - 海南蒲桃葉斑病",
+            "麻瘋樹 - 麻瘋樹銹病 或 葉斑病",
+            "水黃皮 - 水黃皮潛葉蟲害",
+            "石榴 - 石榴細菌性黑斑病",
+            "檸檬 - 柑橘潰瘍病",
+            "懸鈴木 - 懸鈴木炭疽病"
+        ];
+
+        // 從模型 URL 中解析 Model ID 的工具函數
+        function parseModelId(url) {
+            try {
+                let trimmed = url.trim().replace(/\/$/, "");
+                let parts = trimmed.split('/');
+                let idCandidate = parts[parts.length - 1];
+                return idCandidate || "CustomModel";
+            } catch (err) {
+                return "CustomModel";
+            }
+        }
+
+        // 初始化與下載 Teachable Machine 模型
+        async function initModel(targetUrl) {
+            showLoading("正在載入 AI 影像識別模型...");
+            isModelLoaded = false;
+            updateStatusBadge("正在下載模型...", "bg-amber-50 text-amber-700 border-amber-200");
+            
+            try {
+                let formattedUrl = targetUrl.trim();
+                if (!formattedUrl.endsWith('/')) {
+                    formattedUrl += '/';
+                }
+
+                const modelURL = formattedUrl + "model.json";
+                const metadataURL = formattedUrl + "metadata.json";
+                
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+                
+                isModelLoaded = true;
+                currentModelUrl = formattedUrl;
+                
+                const modelId = parseModelId(formattedUrl);
+                document.getElementById('header-model-id').innerText = modelId;
+                document.getElementById('model-url-input').value = formattedUrl;
+                
+                // 1. 載入成功後，動態產生對齊模型內部 Class Label 的分析條
+                renderPredictionBars();
+                
+                updateStatusBadge("模型載入成功", "bg-emerald-50 text-emerald-700 border-emerald-200");
+                showToast(`AI 辨識模型 (${modelId}) 載入完畢！`, "success");
+            } catch (error) {
+                console.error("模型載入失敗：", error);
+                updateStatusBadge("模型載入失敗", "bg-rose-50 text-rose-700 border-rose-200");
+                showToast("模型載入失敗！請確認網址格式正確、已發佈且網路連線正常。", "error");
+                document.getElementById('header-model-id').innerText = "ERROR";
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 1. 動態繪製與載入之模型完全一致的類別控制項條
+        function renderPredictionBars() {
+            if (!model) return;
+            const labels = model.getClassLabels();
+            const container = document.getElementById('prediction-bars');
+            container.innerHTML = ''; 
+
+            labels.forEach((label, index) => {
+                const isHealthy = label.toLowerCase().includes('healthy') || label.includes('健康');
+                const themeClass = isHealthy ? 'text-emerald-700' : 'text-rose-700';
+                const icon = isHealthy ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-exclamation';
+                const barColor = isHealthy ? 'from-emerald-500 to-teal-400' : 'from-red-500 to-rose-400';
+                const textCol = isHealthy ? 'text-emerald-600' : 'text-rose-600';
+
+                container.innerHTML += `
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs sm:text-sm font-bold flex items-center gap-2 ${themeClass}">
+                                <i class="${icon}"></i> ${label}
+                            </span>
+                            <span id="prob-class-${index}" class="text-xs sm:text-sm font-mono font-extrabold ${textCol}">0.00%</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                            <div id="bar-class-${index}" class="h-full bg-gradient-to-r ${barColor} rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // 自訂更換模型
+        async function changeModelUrl() {
+            const inputUrl = document.getElementById('model-url-input').value.trim();
+            if (!inputUrl) {
+                showToast("請輸入有效的 Teachable Machine 模型網址！", "error");
+                return;
+            }
+
+            if (!inputUrl.startsWith("http://") && !inputUrl.startsWith("https://")) {
+                showToast("網址必須以 http:// 或 https:// 開頭！", "error");
+                return;
+            }
+
+            if (isWebcamOn) {
+                await toggleWebcam();
+                showToast("已重置影像輸入，正在重新連接新模型...", "info");
+            } else {
+                document.getElementById('canvas-preview').classList.add('hidden');
+                document.getElementById('placeholder-ui').classList.remove('hidden');
+                disableRecordButton();
+                resetPredictions();
+            }
+
+            await initModel(inputUrl);
+        }
+
+        // 還原為課程預設模型
+        async function resetDefaultModel() {
+            if (currentModelUrl === DEFAULT_MODEL_URL) {
+                showToast("目前已是預設模型！", "info");
+                return;
+            }
+            
+            if (isWebcamOn) {
+                await toggleWebcam();
+            }
+            
+            document.getElementById('canvas-preview').classList.add('hidden');
+            document.getElementById('placeholder-ui').classList.remove('hidden');
+            disableRecordButton();
+            resetPredictions();
+
+            await initModel(DEFAULT_MODEL_URL);
+        }
+
+        // 收起/展開模型設定區
+        function toggleSettings() {
+            const content = document.getElementById('settings-content');
+            const icon = document.getElementById('icon-toggle-settings');
+            const btnSpan = document.querySelector('#btn-toggle-settings span');
+
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.className = "fa-solid fa-chevron-up";
+                btnSpan.innerText = "收起";
+            } else {
+                content.classList.add('hidden');
+                icon.className = "fa-solid fa-chevron-down";
+                btnSpan.innerText = "展開";
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initModel(DEFAULT_MODEL_URL);
+        });
+
+        function showLoading(text) {
+            const spinner = document.getElementById('loading-spinner');
+            const textEl = document.getElementById('loading-text');
+            textEl.innerText = text;
+            spinner.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-spinner').classList.add('hidden');
+        }
+
+        function updateStatusBadge(text, classes) {
+            const badge = document.getElementById('status-badge');
+            badge.innerText = text;
+            badge.className = `text-[10px] sm:text-xs px-2.5 py-1 rounded-full font-semibold border ${classes}`;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = "bg-white border-slate-200 text-slate-800 shadow-lg";
+            let iconClass = "fa-circle-info text-blue-500";
+            
+            if (type === 'success') {
+                bgClass = "bg-white border-emerald-200 text-slate-800 shadow-md shadow-emerald-500/5";
+                iconClass = "fa-circle-check text-emerald-600";
+            } else if (type === 'error') {
+                bgClass = "bg-white border-rose-200 text-slate-800 shadow-md";
+                iconClass = "fa-circle-exclamation text-rose-600";
+            }
+            
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg transition-all duration-300 transform translate-y-5 opacity-0 ${bgClass}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${iconClass} flex-shrink-0"></i>
+                <span class="text-xs sm:text-sm font-semibold">${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-5', 'opacity-0');
+            }, 50);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3500);
+        }
+
+        // 切換視訊鏡頭開啟與關閉（已針對後置鏡頭優化）
+        async function toggleWebcam() {
+            if (!isModelLoaded) {
+                showToast("請等待 AI 模型載入完成！", "error");
+                return;
+            }
+
+            const videoElement = document.getElementById('webcam-preview');
+            const canvasElement = document.getElementById('canvas-preview');
+            const placeholder = document.getElementById('placeholder-ui');
+            const btnWebcam = document.getElementById('btn-webcam');
+            const shutterBtn = document.getElementById('btn-shutter');
+
+            canvasElement.classList.add('hidden');
+            document.getElementById('image-upload').value = "";
+
+            if (isWebcamOn) {
+                stopWebcam();
+                placeholder.classList.remove('hidden');
+                videoElement.classList.add('hidden');
+                shutterBtn.classList.add('hidden');
+                btnWebcam.innerHTML = `<i class="fa-solid fa-video text-emerald-600"></i><span>啟動視訊鏡頭</span>`;
+                updateStatusBadge("視訊已終止", "bg-slate-100 text-slate-500 border-slate-200");
+                disableRecordButton();
+                resetPredictions();
+            } else {
+                showLoading("正在初始化相機與影像串流...");
+                try {
+                    const flip = false; 
+                    webcam = new tmImage.Webcam(640, 480, flip);
+                    
+                    await webcam.setup({ facingMode: "environment" }); 
+                    await webcam.play();
+                    
+                    videoElement.srcObject = webcam.webcam.srcObject;
+                    videoElement.classList.remove('hidden');
+                    shutterBtn.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                    
+                    isWebcamOn = true;
+                    activeInputSource = 'webcam';
+                    btnWebcam.innerHTML = `<i class="fa-solid fa-circle-stop text-rose-600"></i><span>關閉視訊鏡頭</span>`;
+                    updateStatusBadge("即時觀測中", "bg-emerald-50 text-emerald-700 border-emerald-200");
+                    
+                    predictionInterval = requestAnimationFrame(loopWebcamPrediction);
+                    showToast("後置鏡頭啟動成功，AI 開始即時偵測！", "success");
+                    enableRecordButton();
+                } catch (error) {
+                    console.error("無法啟動後置鏡頭：", error);
+                    showToast("無法存取後置鏡頭，正在嘗試啟動預設鏡頭...", "info");
+                    
+                    try {
+                        webcam = new tmImage.Webcam(640, 480, true);
+                        await webcam.setup(); 
+                        await webcam.play();
+                        
+                        videoElement.srcObject = webcam.webcam.srcObject;
+                        videoElement.classList.remove('hidden');
+                        shutterBtn.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+                        
+                        isWebcamOn = true;
+                        activeInputSource = 'webcam';
+                        btnWebcam.innerHTML = `<i class="fa-solid fa-circle-stop text-rose-600"></i><span>關閉視訊鏡頭</span>`;
+                        updateStatusBadge("即時觀測中 (預設相機)", "bg-emerald-50 text-emerald-700 border-emerald-200");
+                        
+                        predictionInterval = requestAnimationFrame(loopWebcamPrediction);
+                        enableRecordButton();
+                    } catch (defaultError) {
+                        console.error("預設相機也啟動失敗：", defaultError);
+                        showToast("相機啟動失敗，請確認是否允許網頁使用你的鏡頭！", "error");
+                        placeholder.classList.remove('hidden');
+                        videoElement.classList.add('hidden');
+                        shutterBtn.classList.add('hidden');
+                        updateStatusBadge("相機啟動失敗", "bg-rose-50 text-rose-700 border-rose-200");
+                    }
+                } finally {
+                    hideLoading();
+                }
+            }
+        }
+
+        function stopWebcam() {
+            if (predictionInterval) {
+                cancelAnimationFrame(predictionInterval);
+                predictionInterval = null;
+            }
+            if (webcam) {
+                webcam.stop();
+                webcam = null;
+            }
+            isWebcamOn = false;
+        }
+
+        async function loopWebcamPrediction() {
+            if (!isWebcamOn) return;
+            webcam.update(); 
+            await predictFrame(webcam.canvas);
+            predictionInterval = requestAnimationFrame(loopWebcamPrediction);
+        }
+
+        async function handleImageUpload(event) {
+            if (!isModelLoaded) {
+                showToast("請等待 AI 模型載入完成！", "error");
+                return;
+            }
+
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (isWebcamOn) {
+                await toggleWebcam();
+            }
+
+            showLoading("正在載入並解析圖片...");
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const img = new Image();
+                img.onload = async function() {
+                    const canvas = document.getElementById('canvas-preview');
+                    const ctx = canvas.getContext('2d');
+                    
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    ctx.drawImage(img, 0, 0);
+                    
+                    canvas.classList.remove('hidden');
+                    document.getElementById('placeholder-ui').classList.add('hidden');
+                    document.getElementById('webcam-preview').classList.add('hidden');
+                    document.getElementById('btn-shutter').classList.add('hidden');
+                    
+                    activeInputSource = 'image';
+                    updateStatusBadge("圖片載入完成", "bg-cyan-50 text-cyan-700 border-cyan-200");
+                    
+                    await predictFrame(canvas);
+                    enableRecordButton();
+                    hideLoading();
+                    showToast("單張圖片分析完成！", "success");
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function predictFrame(imageElement) {
+            if (!model) return;
+            
+            const prediction = await model.predict(imageElement);
+            
+            let healthyVal = 0;
+            let sickVal = 0;
+
+            prediction.forEach((pred, index) => {
+                const className = pred.className.toLowerCase();
+                const prob = pred.probability;
+                const pPercent = (prob * 100).toFixed(2);
+
+                const probEl = document.getElementById(`prob-class-${index}`);
+                const barEl = document.getElementById(`bar-class-${index}`);
+                if (probEl && barEl) {
+                    probEl.innerText = `${pPercent}%`;
+                    barEl.style.width = `${pPercent}%`;
+                }
+
+                // 根據自訂類別關鍵字，映射到知識庫的開啟條件
+                if (className.includes('healthy') || className.includes('健康')) {
+                    if (prob > healthyVal) healthyVal = prob;
+                } else if (className.includes('sick') || className.includes('病') || className.includes('unhealthy')) {
+                    if (prob > sickVal) sickVal = prob;
+                }
+            });
+
+            currentPredictions.healthy = healthyVal;
+            currentPredictions.sick = sickVal;
+
+            updatePredictionUI();
+        }
+
+        function updatePredictionUI() {
+            if (currentPredictions.healthy > 0.5) {
+                showBotanyKnowledge('healthy');
+            } else if (currentPredictions.sick > 0.5) {
+                showBotanyKnowledge('sick');
+            } else {
+                showBotanyKnowledge('unknown');
+            }
+        }
+
+        function resetPredictions() {
+            if (!model) return;
+            const labels = model.getClassLabels();
+            labels.forEach((label, index) => {
+                const probEl = document.getElementById(`prob-class-${index}`);
+                const barEl = document.getElementById(`bar-class-${index}`);
+                if (probEl && barEl) {
+                    probEl.innerText = `0.00%`;
+                    barEl.style.width = `0%`;
+                }
+            });
+            showBotanyKnowledge('unknown');
+        }
+
+        function enableRecordButton() {
+            const btn = document.getElementById('btn-record');
+            btn.removeAttribute('disabled');
+            btn.className = "w-full mt-2 flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/10 cursor-pointer transition-all text-sm sm:text-base active:scale-95";
+        }
+
+        function disableRecordButton() {
+            const btn = document.getElementById('btn-record');
+            btn.setAttribute('disabled', 'true');
+            btn.className = "w-full mt-2 flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-slate-100 text-slate-400 border border-slate-200 font-semibold cursor-not-allowed transition-all text-sm sm:text-base";
+        }
+
+        // 核心更新：將「葉片病理狀態與臨床症狀診斷」替換為「健康葉片：」與「生病葉片：」並大幅放大症狀文字
+        const BOTANY_DATABASE = {
+            healthy: {
+                title: `<i class="fa-solid fa-circle-check text-emerald-600"></i> 植物健康特徵觀察`,
+                borderClass: 'border-l-4 border-l-slate-400',
+                content: `
+                    <div class="space-y-4 text-slate-700">
+                        <div class="space-y-3">
+                            <h4 class="font-bold text-base sm:text-lg text-emerald-700 flex items-center gap-2">
+                                <i class="fa-solid fa-stethoscope"></i> 健康葉片：
+                            </h4>
+                            <div class="p-4 bg-emerald-50/80 rounded-xl border border-emerald-200 shadow-sm">
+                                <p class="text-sm sm:text-base text-slate-700 leading-relaxed font-semibold">
+                                    葉片（葉身）呈現該物種特物理特有的均勻、深綠色葉綠素色素。葉脈（主脈及側脈）結構完整，無任何褪綠變黃（Chlorosis）、壞死斑點（Necrotic spots）、真菌菌絲體覆蓋或昆蟲蛀食的痕跡。
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            sick: {
+                title: `<i class="fa-solid fa-circle-exclamation text-rose-600"></i> 植物病理特徵觀察`,
+                borderClass: 'border-l-4 border-l-slate-400',
+                content: `
+                    <div class="space-y-4 text-slate-700">
+                        <div class="space-y-3">
+                            <h4 class="font-bold text-base sm:text-lg text-rose-700 flex items-center gap-2">
+                                <i class="fa-solid fa-stethoscope"></i> 生病葉片：
+                            </h4>
+                            <div class="max-h-96 overflow-y-auto pr-1 space-y-4 border border-slate-200 rounded-xl p-3.5 bg-slate-50/50 shadow-inner">
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🥭 芒果：</span>葉面出現不斷擴展、呈水漬狀的深褐色至黑色多角形斑點，病斑處易破裂。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由膠孢炭疽菌引起的 <span class="text-rose-600 font-extrabold">芒果炭疽病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🌳 阿江欖仁：</span>葉片零星分佈細小的圓形壞死褐色斑點，病斑邊緣有明顯的深褐色環狀隆起。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由擬盤多毛孢菌引起的 <span class="text-rose-600 font-extrabold">欖仁葉斑病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🌿 糖膠樹：</span>葉片結構嚴重畸形，葉面佈滿向外突出、質地堅硬、呈角狀或袋狀的綠褐色癭瘤。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由糖膠樹木虱寄生誘發的 <span class="text-rose-600 font-extrabold">糖膠樹葉癭病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍏 番石榴：</span>葉片邊緣或葉尖出現凹陷、乾燥的深褐色壞死大斑塊。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由炭疽菌引起的 <span class="text-rose-600 font-extrabold">番石榴炭疽病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍈 木橘：</span>葉面形成粗糙、凸起、呈軟木質的褐色潰瘍狀病斑，每個病斑周圍都有極為明顯的黃綠色暈圈。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由黃單胞桿菌引起的 <span class="text-rose-600 font-extrabold">木橘細菌性潰瘍病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍇 海南蒲桃：</span>葉面佈滿數以千計密集的褐色針尖狀小斑點，導致整片葉子提早乾枯捲曲。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：常見的 <span class="text-rose-600 font-extrabold">海南蒲桃葉斑病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍂 麻瘋樹：</span>葉片出現不規則的深褐色斑塊，或在葉背聚集鐵鏽色的粉末狀孢子夏孢子堆。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由麻瘋樹銹菌引起的 <span class="text-rose-600 font-extrabold">麻瘋樹銹病 或 葉斑病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🌱 水黃皮：</span>葉片表皮下出現彎曲、中空、呈白色或淡黃色的蛇形隧道，或伴隨細小黑點。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由潛葉蠅/潛葉蛾幼蟲蛀食引起的 <span class="text-rose-600 font-extrabold">水黃皮潛葉蟲害</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🔴 石榴：</span>出現非常細小、呈水漬狀的黑色多角形病斑，病斑受葉脈限制而呈現角度，導致葉片迅速變黃脫落。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由石榴黃單胞菌引起的 <span class="text-rose-600 font-extrabold">石榴細菌性黑斑病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍋 檸檬：</span>葉片兩面均出現火山口狀、粗糙、呈軟木質隆起的黃褐色乾枯病斑，周邊伴有油漬狀的黃色暈圈。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由地毯草黃單胞菌柑橘致病變種引起的 <span class="text-rose-600 font-extrabold">柑橘潰瘍病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base pb-1">
+                                    <span class="font-extrabold text-rose-800 text-base">🍁 懸鈴木：</span>沿著葉片主脈向外瘋狂蔓延的大面積 V 字形乾枯褐色壞死區域，導致葉尖和葉緣向上捲曲、脆化並枯死。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由懸鈴木小叢殼菌引起的 <span class="text-rose-600 font-extrabold">懸鈴木炭疽病</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            unknown: {
+                title: `<i class="fa-solid fa-microscope text-slate-500"></i> 植物學觀察指引`,
+                borderClass: 'border-l-4 border-l-slate-400',
+                content: `
+                    <div class="text-center py-8 text-slate-500">
+                        <i class="fa-solid fa-seedling text-3xl sm:text-4xl text-slate-300 mb-3 block animate-bounce"></i>
+                        <p class="text-sm sm:text-base font-semibold">請對準植物葉片進行實時觀測...</p>
+                        <p class="text-xs sm:text-sm text-slate-400 mt-2">當辨識機率（信心度）超過 50% 時，這裡將為你動態解析植物醫學與微觀學術知識！</p>
+                    </div>
+                `
+            }
+        };
+
+        function showBotanyKnowledge(type) {
+            const panel = document.getElementById('knowledge-panel');
+            const title = document.getElementById('knowledge-title');
+            const content = document.getElementById('knowledge-content');
+
+            const data = BOTANY_DATABASE[type];
+            if (data) {
+                panel.className = `glass-panel rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-4 lg:min-h-[300px] ${data.borderClass}`;
+                title.innerHTML = data.title;
+                content.innerHTML = data.content;
+            }
+        }
+
+        // 核心功能：實時視訊拍照截圖並紀錄
+        function captureWebcamSnapshot() {
+            if (!isWebcamOn || !webcam) {
+                showToast("請先啟動視訊鏡頭！", "error");
+                return;
+            }
+
+            // 觸獲模擬相機閃光燈效果
+            const flash = document.getElementById('camera-flash');
+            flash.classList.remove('opacity-0');
+            flash.classList.add('opacity-100');
+            setTimeout(() => {
+                flash.classList.remove('opacity-100');
+                flash.classList.add('opacity-0');
+            }, 150);
+
+            try {
+                // 建立一個臨時繪圖板擷取當前影像幀
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = 640;
+                tempCanvas.height = 480;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(webcam.canvas, 0, 0, 640, 480);
+                
+                // 轉為輕量化的 Data URL
+                const imgDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
+
+                // 寫入日誌
+                addSnapshotToLog(imgDataUrl, "即時相機");
+            } catch (err) {
+                console.error("相機拍照失敗：", err);
+                showToast("截圖失敗，請重新再試！", "error");
+            }
+        }
+
+        // 核心功能：將當前辨識數據與照片一併寫入實驗日誌
+        function recordToLog() {
+            let capturedImageSrc = "";
+
+            try {
+                if (activeInputSource === 'webcam' && webcam) {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = 640;
+                    tempCanvas.height = 480;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(webcam.canvas, 0, 0, 640, 480);
+                    capturedImageSrc = tempCanvas.toDataURL('image/jpeg', 0.8);
+                } else if (activeInputSource === 'image') {
+                    const canvas = document.getElementById('canvas-preview');
+                    capturedImageSrc = canvas.toDataURL('image/jpeg', 0.8);
+                }
+            } catch (err) {
+                console.warn("無法取得完整圖片數據，改用預設圖片：", err);
+                capturedImageSrc = "https://placehold.co/320x240/f1f5f9/94a3b8?text=Leaf";
+            }
+
+            const sourceText = activeInputSource === 'webcam' ? "即時相機" : "上載圖片";
+            addSnapshotToLog(capturedImageSrc, sourceText);
+        }
+
+        // 核心底層：包裝紀錄對象與渲染數據
+        function addSnapshotToLog(imgDataUrl, sourceText) {
+            const now = new Date();
+            const timestamp = now.getFullYear() + '/' + 
+                              String(now.getMonth() + 1).padStart(2, '0') + '/' + 
+                              String(now.getDate()).padStart(2, '0') + ' ' + 
+                              String(now.getHours()).padStart(2, '0') + ':' + 
+                              String(now.getMinutes()).padStart(2, '0') + ':' + 
+                              String(now.getSeconds()).padStart(2, '0');
+
+            // 實時小數點精度改為 2 位，與 Teachable Machine 核心分析保持高度契合
+            const hPercent = (currentPredictions.healthy * 100).toFixed(2);
+            const sPercent = (currentPredictions.sick * 100).toFixed(2);
+            
+            let statusText = "";
+            if (currentPredictions.healthy > currentPredictions.sick) {
+                statusText = "健康";
+            } else {
+                statusText = "生病";
+            }
+
+            const logId = Date.now();
+
+            const logEntry = {
+                id: logId,
+                timestamp: timestamp,
+                source: sourceText,
+                status: statusText,
+                healthyProb: hPercent + "%",
+                sickProb: sPercent + "%",
+                diseaseSelected: "健康葉片",
+                imageSrc: imgDataUrl
+            };
+
+            experimentLogs.push(logEntry);
+            renderLogTable();
+            showToast("成功將辨識數據與葉片照片寫入日誌！", "success");
+        }
+
+        // 重新渲染日誌表格 (增加圖片快照縮圖與點擊放大功能)
+        function renderLogTable() {
+            const tbody = document.getElementById('log-table-body');
+            tbody.innerHTML = "";
+
+            if (experimentLogs.length === 0) {
+                tbody.innerHTML = `
+                    <tr id="empty-row">
+                        <td colspan="7" class="py-8 px-4 text-center text-slate-400">
+                            <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
+                            尚未紀錄任何觀測數據。在上方辨識葉片後，點選「寫入實驗日誌」或鏡頭「拍照截圖」即可增加數據。
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            experimentLogs.forEach((log) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors border-b border-slate-100";
+
+                const isHealthy = log.status.includes("健康");
+                const statusBadge = isHealthy 
+                    ? `<span class="px-2.5 py-1 text-xs sm:text-sm rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-leaf"></i> 健康</span>`
+                    : `<span class="px-2.5 py-1 text-xs sm:text-sm rounded-full font-bold bg-rose-50 text-rose-700 border border-rose-200"><i class="fa-solid fa-circle-exclamation"></i> 生病</span>`;
+
+                // 產生下拉選單選項
+                let optionsHtml = '';
+                DISEASE_OPTIONS.forEach(opt => {
+                    const selected = log.diseaseSelected === opt ? 'selected' : '';
+                    optionsHtml += `<option value="${opt}" ${selected}>${opt}</option>`;
+                });
+
+                // 觀測對象欄位加入快照微縮圖，點選可放大檢視
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 font-mono text-xs sm:text-sm text-slate-500">${log.timestamp}</td>
+                    <td class="py-3.5 px-4 text-xs sm:text-sm font-semibold text-slate-600">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity" onclick="viewFullImage('${log.imageSrc}')" title="點擊放大圖片">
+                                <img src="${log.imageSrc || 'https://placehold.co/48x48?text=Leaf'}" class="w-full h-full object-cover">
+                            </div>
+                            <span class="flex items-center gap-1.5">
+                                <i class="${log.source === '即時相機' ? 'fa-solid fa-video text-emerald-600' : 'fa-solid fa-file-image text-cyan-600'} text-xs sm:text-sm"></i>
+                                ${log.source}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4">${statusBadge}</td>
+                    <td class="py-3.5 px-4 font-mono text-xs sm:text-sm text-emerald-600 font-extrabold">${log.healthyProb}</td>
+                    <td class="py-3.5 px-4 font-mono text-xs sm:text-sm text-rose-600 font-extrabold">${log.sickProb}</td>
+                    <td class="py-3.5 px-4">
+                        <select onchange="updateLogDisease(${log.id}, this.value)" 
+                                class="w-full bg-slate-100 border border-slate-200 focus:border-slate-300 focus:bg-white rounded px-2.5 py-1.5 text-xs sm:text-sm text-slate-700 font-semibold focus:outline-none transition-all">
+                            ${optionsHtml}
+                        </select>
+                    </td>
+                    <td class="py-3.5 px-4 text-center">
+                        <button onclick="deleteLogEntry(${log.id})" class="text-xs sm:text-sm text-slate-400 hover:text-red-500 p-1.5 rounded hover:bg-slate-100 transition-all" title="刪除此列">
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 大圖檢視懸浮窗功能
+        function viewFullImage(imageSrc) {
+            if (!imageSrc) return;
+            const modal = document.getElementById('image-modal');
+            const modalImg = document.getElementById('modal-img');
+            modalImg.src = imageSrc;
+            modal.classList.remove('hidden');
+        }
+
+        function closeImageModal() {
+            const modal = document.getElementById('image-modal');
+            modal.classList.add('hidden');
+        }
+
+        // 更新日誌中所選取的病理診斷數據
+        function updateLogDisease(id, selectedValue) {
+            const index = experimentLogs.findIndex(log => log.id === id);
+            if (index !== -1) {
+                experimentLogs[index].diseaseSelected = selectedValue;
+                showToast("現場病害診斷已記錄存檔！", "info");
+            }
+        }
+
+        function deleteLogEntry(id) {
+            experimentLogs = experimentLogs.filter(log => log.id !== id);
+            renderLogTable();
+            showToast("已刪除該條觀測紀錄", "info");
+        }
+
+        // 自訂清空機制：雙擊確認，避免傳統 native 彈窗阻礙編譯與操作
+        function clearLog() {
+            if (experimentLogs.length === 0) {
+                showToast("日誌本來就是空的！", "info");
+                return;
+            }
+            
+            const clearBtn = document.getElementById('btn-clear-log');
+            const clearText = document.getElementById('clear-log-text');
+
+            if (!isClearConfirmMode) {
+                isClearConfirmMode = true;
+                clearBtn.className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-600 text-white font-bold transition-all text-xs sm:text-sm shadow-md active:scale-95";
+                clearText.innerText = "再次點擊以確認清空！";
+                showToast("請再次點擊清空按鈕以確認，3 秒後將取消操作。", "info");
+
+                clearConfirmTimeout = setTimeout(() => {
+                    resetClearButton();
+                }, 3000);
+            } else {
+                clearTimeout(clearConfirmTimeout);
+                experimentLogs = [];
+                renderLogTable();
+                resetClearButton();
+                showToast("所有觀測數據已成功完全清空！", "info");
+            }
+        }
+
+        function resetClearButton() {
+            isClearConfirmMode = false;
+            const clearBtn = document.getElementById('btn-clear-log');
+            const clearText = document.getElementById('clear-log-text');
+            if (clearBtn && clearText) {
+                clearBtn.className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-semibold transition-all text-xs sm:text-sm shadow-sm active:scale-95";
+                clearText.innerText = "清空日誌";
+            }
+        }
+
+        // 匯出 CSV 檔案功能 (與下拉選單選擇之病害診斷對齊)
+        function exportCSV() {
+            if (experimentLogs.length === 0) {
+                showToast("日誌中無任何數據可供匯出！", "error");
+                return;
+            }
+
+            let csvContent = "\uFEFF"; 
+            csvContent += "紀錄時間,觀測來源,AI判定狀態,健康信心度,生病信心度,現場病害診斷\n";
+
+            experimentLogs.forEach(log => {
+                const safeDisease = `"${log.diseaseSelected.replace(/"/g, '""')}"`;
+                csvContent += `${log.timestamp},${log.source},${log.status},${log.healthyProb},${log.sickProb},${safeDisease}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            
+            const now = new Date();
+            const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+            link.setAttribute("download", `植物葉片健康AI檢測日誌_${dateStr}.csv`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast("CSV 數據檔案下載成功！", "success");
+        }
+    </script>
+</body>
+</html>
