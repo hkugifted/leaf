@@ -146,7 +146,7 @@
             <div class="glass-panel rounded-2xl p-4 sm:p-5 shadow-sm border-l-4 border-l-emerald-600 flex flex-col gap-4">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                     <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 text-emerald-700">
-                        <i class="fa-solid fa-brain text-emerald-600"></i> 2. AI 實時信心度 analysis
+                        <i class="fa-solid fa-brain text-emerald-600"></i> 2. AI 實時信心度分析
                     </h2>
                 </div>
 
@@ -223,7 +223,7 @@
                         <h2 class="text-lg sm:text-xl font-bold text-emerald-700 flex items-center gap-2">
                             <i class="fa-solid fa-book-bookmark"></i> 3. 實驗日誌紀錄表
                         </h2>
-                        <p class="text-xs sm:text-sm text-slate-500 mt-1">在此處管理你的觀測數據，加入病理診斷，並匯出到 CSV 進行數據統計</p>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-1">在此處管理你的觀測數據，加入病理診斷，並匯出到 CSV 進行數據統計。</p>
                     </div>
                     <div class="flex gap-2 w-full sm:w-auto">
                         <button onclick="exportCSV()" class="flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all text-xs sm:text-sm shadow-md shadow-emerald-600/10 active:scale-95">
@@ -252,7 +252,7 @@
                             <tr id="empty-row">
                                 <td colspan="7" class="py-8 px-4 text-center text-slate-400">
                                     <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
-                                    尚未紀錄任何觀測數據。在上方辨識葉片後，先點擊「截圖鎖定」，再點選「寫入實驗日誌」即可增加數據。
+                                    尚未紀錄 any 觀測數據。在上方辨識葉片後，先點擊「截圖鎖定」，再點選「寫入實驗日誌」即可增加數據。
                                 </td>
                             </tr>
                         </tbody>
@@ -551,172 +551,229 @@
         }
 
         const BOTANY_DATABASE = {
-            healthy: { title: `<i class="fa-solid fa-circle-check text-emerald-600"></i> 植物健康特徵觀察`, borderClass: 'border-l-4 border-l-slate-400', content: `<div class="p-4 bg-emerald-50/80 rounded-xl border border-emerald-200 shadow-sm"><p class="text-sm sm:text-base text-slate-700 font-semibold">葉片（葉身）呈現該物種特物理特有的均勻、深綠色葉綠素色素。葉脈結構完整，無任何褪綠變黃、壞死斑點或昆蟲物食痕跡。</p></div>` },
-            sick: { title: `<i class="fa-solid fa-circle-exclamation text-rose-600"></i> 植物病理特徵觀察`, borderClass: 'border-l-4 border-l-slate-400', content: `<div class="max-h-96 overflow-y-auto pr-1 space-y-4 border border-slate-200 rounded-xl p-3.5 bg-slate-50/50 shadow-inner"><div class="text-sm"><span class="font-extrabold text-rose-800">🥭 芒果：</span>葉面出現黑色多角形斑點。└ 診斷：<span class="text-rose-600 font-extrabold">芒果炭疽病</span></div><div class="text-sm"><span class="font-extrabold text-rose-800">🌳 阿江欖仁：</span>細小圓形壞死褐色斑點。└ 診斷：<span class="text-rose-600 font-extrabold">欖仁葉斑病</span></div></div>` },
-            unknown: { title: `<i class="fa-solid fa-microscope text-slate-500"></i> 植物學觀察指引`, borderClass: 'border-l-4 border-l-slate-400', content: `<div class="text-center py-8 text-slate-500"><p class="text-sm font-semibold">請對準植物葉片進行實時觀測...</p></div>` }
-        };
-
-        function showBotanyKnowledge(type) {
-            const p = document.getElementById('knowledge-panel');
-            const data = BOTANY_DATABASE[type];
-            if (data) {
-                p.className = `glass-panel rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-4 lg:min-h-[300px] ${data.borderClass}`;
-                document.getElementById('knowledge-title').innerHTML = data.title;
-                document.getElementById('knowledge-content').innerHTML = data.content;
-            }
-        }
-
-        // 截取並鎖定當前畫面
-        function captureWebcamSnapshot() {
-            if (!isWebcamOn || !webcam) {
-                showToast("請先啟動視訊鏡頭！", "error");
-                return;
-            }
-
-            const flash = document.getElementById('camera-flash');
-            flash.classList.remove('opacity-0'); flash.classList.add('opacity-100');
-            setTimeout(() => { flash.classList.remove('opacity-100'); flash.classList.add('opacity-0'); }, 150);
-
-            try {
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = 640; tempCanvas.height = 480;
-                const tempCtx = tempCanvas.getContext('2d');
-                tempCtx.drawImage(webcam.canvas, 0, 0, 640, 480);
-                webcamSnapshot = tempCanvas.toDataURL('image/jpeg', 0.8);
-                
-                // 同步鎖定當下的 AI 信心度
-                webcamSnapshotPredictions = { ...currentPredictions };
-                showToast("📸 畫面與數據已鎖定！可以點擊下方寫入實驗日誌囉。", "success");
-            } catch (err) {
-                console.warn("擷取畫面失敗", err);
-            }
-        }
-
-        // 【核心修改】寫入日誌邏輯
-        function recordToLog() {
-            // 檢查是否有截圖暫存
-            if (!webcamSnapshot) {
-                showToast("⚠️ 請先點擊視訊畫面內下方的「截圖鎖定」按鈕，再寫入實驗日誌！", "error");
-                return; // 直接攔截，不往下執行
-            }
-
-            // 若有暫存，則直接取出使用
-            const capturedImageSrc = webcamSnapshot;
-            const sourceText = activeInputSource === 'webcam' ? "視訊鏡頭" : "上載圖片";
-
-            addSnapshotToLog(capturedImageSrc, sourceText, true, true);
-
-            // 寫入完畢後，如果是視訊鏡頭模式則清空暫存（強迫下一張必須重新截圖）
-            if (activeInputSource === 'webcam') {
-                webcamSnapshot = null;
-                webcamSnapshotPredictions = null;
-            }
-        }
-
-        function addSnapshotToLog(imgDataUrl, sourceText, isCompleteRecord = true, useSnapshot = false) {
-            const now = new Date();
-            const timestamp = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
-
-            let hPercent, sPercent, statusText;
-
-            if (isCompleteRecord) {
-                const targetPreds = (useSnapshot && webcamSnapshotPredictions) ? webcamSnapshotPredictions : currentPredictions;
-                hPercent = (targetPreds.healthy * 100).toFixed(2) + "%";
-                sPercent = (targetPreds.sick * 100).toFixed(2) + "%";
-                statusText = targetPreds.healthy > targetPreds.sick ? "健康" : "生病";
-            } else {
-                hPercent = "---"; sPercent = "---"; statusText = "未辨識";
-            }
-
-            experimentLogs.push({
-                id: Date.now(),
-                timestamp: timestamp,
-                source: sourceText,
-                status: statusText,
-                healthyProb: hPercent,
-                sickProb: sPercent,
-                diseaseSelected: "健康葉片",
-                imageSrc: imgDataUrl
-            });
-            renderLogTable();
-            showToast("成功將辨識數據與葉片照片寫入日誌！", "success");
-        }
-
-        function renderLogTable() {
-            const tbody = document.getElementById('log-table-body');
-            tbody.innerHTML = "";
-            if (experimentLogs.length === 0) {
-                tbody.innerHTML = `<tr id="empty-row"><td colspan="7" class="py-8 px-4 text-center text-slate-400"><i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>尚未紀錄任何觀測數據。</td></tr>`;
-                return;
-            }
-
-            experimentLogs.forEach((log) => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 border-b border-slate-100";
-                let statusBadge = log.status === "健康" ? `<span class="px-2.5 py-1 text-xs rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">健康</span>` : `<span class="px-2.5 py-1 text-xs rounded-full font-bold bg-rose-50 text-rose-700 border border-rose-200">生病</span>`;
-                
-                let optionsHtml = '';
-                DISEASE_OPTIONS.forEach(opt => { optionsHtml += `<option value="${opt}" ${log.diseaseSelected === opt ? 'selected' : ''}>${opt}</option>`; });
-
-                tr.innerHTML = `
-                    <td class="py-3.5 px-4 font-mono text-xs text-slate-500">${log.timestamp}</td>
-                    <td class="py-3.5 px-4 text-xs font-semibold">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0 cursor-zoom-in" onclick="viewFullImage('${log.imageSrc}')">
-                                <img src="${log.imageSrc}" class="w-full h-full object-cover">
+            healthy: { title: `<i class="fa-solid fa-circle-check text-emerald-600"></i> 植物健康特徵觀察`, borderClass: 'border-l-4 border-l-slate-400', content: `<div class="p-4 bg-emerald-50/80 rounded-xl border border-emerald-200 shadow-sm"><p class="text-sm sm:text-base text-slate-700 font-semibold">葉片（葉身）呈現該物種特物理特有的均勻、深綠色葉綠素色素。葉脈（主脈及側脈）結構完整，無任何褪綠變黃（Chlorosis）、壞死斑點（Necrotic spots）、真菌菌絲體覆蓋或昆蟲蛀食的痕跡。</p></div>` },
+            sick: {
+                title: `<i class="fa-solid fa-circle-exclamation text-rose-600"></i> 植物病理特徵觀察`,
+                borderClass: 'border-l-4 border-l-slate-400',
+                content: `
+                    <div class="space-y-4 text-slate-700">
+                        <div class="space-y-3">
+                            <h4 class="font-bold text-base sm:text-lg text-rose-700 flex items-center gap-2">
+                                <i class="fa-solid fa-stethoscope"></i> 生病葉片：
+                            </h4>
+                            <div class="max-h-96 overflow-y-auto pr-1 space-y-4 border border-slate-200 rounded-xl p-3.5 bg-slate-50/50 shadow-inner">
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🥭 芒果：</span>葉面出現不斷擴展、呈水漬狀的深褐色至黑色多角形斑點，病斑處易破裂。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由膠孢炭疽菌引起的 <span class="text-rose-600 font-extrabold">芒果炭疽病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🌳 阿江欖仁：</span>葉片零星分佈細小的圓形壞死褐色斑點，病斑邊緣有明顯的深褐色環狀隆起。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由擬盤多毛孢菌引起的 <span class="text-rose-600 font-extrabold">欖仁葉斑病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🌿 糖膠樹：</span>葉片結構嚴重畸形，葉面佈滿向外突出、質地堅硬、呈角狀或袋狀的綠褐色癭瘤。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由糖膠樹木虱寄生誘發的 <span class="text-rose-600 font-extrabold">糖膠樹葉癭病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍏 番石榴：</span>葉片邊緣或葉尖出現凹陷、乾燥的深褐色壞死大斑塊。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由炭疽菌引起的 <span class="text-rose-600 font-extrabold">番石榴炭疽病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍈 木橘：</span>葉面形成粗糙、凸起、呈軟木質的褐色潰瘍狀病斑，每個病斑周圍都有極為明顯的黃綠色暈圈。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由黃單胞桿菌引起的 <span class="text-rose-600 font-extrabold">木橘細菌性潰瘍病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍇 海南蒲桃：</span>葉面佈滿數以千計密集的褐色針尖狀小斑點，導致整片葉子提早乾枯捲曲。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：常見的 <span class="text-rose-600 font-extrabold">海南蒲桃葉斑病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍂 麻瘋樹：</span>葉片出現不規則的深褐色斑塊，或在葉背聚集鐵鏽色的粉末狀孢子夏孢子堆。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由麻瘋樹銹菌引起的 <span class="text-rose-600 font-extrabold">麻瘋樹銹病 或 葉斑病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🌱 水黃皮：</span>葉片表皮下出現彎曲、中空、呈白色或淡黃色的蛇形隧道，或伴隨細小黑點。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由潛葉蠅/潛葉蛾幼蟲蛀食引起的 <span class="text-rose-600 font-extrabold">水黃皮潛葉蟲害</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🔴 石榴：</span>出現非常細小、呈水漬狀的黑色多角形病斑，病斑受葉脈限制而呈現角度，導致葉片迅速變黃脫落。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由石榴黃單胞菌引起的 <span class="text-rose-600 font-extrabold">石榴細菌性黑斑病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base border-b border-slate-200/50 pb-3">
+                                    <span class="font-extrabold text-rose-800 text-base">🍋 檸檬：</span>葉片兩面均出現火山口狀、粗糙、呈軟木質隆起的黃褐色乾枯病斑，周邊伴有油漬狀的黃色暈圈。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由地毯草黃單胞菌柑橘致病變種引起的 <span class="text-rose-600 font-extrabold">柑橘潰瘍病</span></div>
+                                </div>
+                                <div class="text-sm sm:text-base pb-1">
+                                    <span class="font-extrabold text-rose-800 text-base">🍁 懸鈴木：</span>沿著葉片主脈向外瘋狂蔓延的大面積 V 字形乾枯褐色壞死區域，導致葉尖和葉緣向上捲曲、脆化並枯死。
+                                    <div class="mt-1 font-bold text-slate-600 text-xs sm:text-sm">└ 診斷結果：由懸鈴木小叢殼菌引起的 <span class="text-rose-600 font-extrabold">懸鈴木炭疽病</span></div>
+                                </div>
                             </div>
-                            <span>${log.source}</span>
                         </div>
-                    </td>
-                    <td class="py-3.5 px-4">${statusBadge}</td>
-                    <td class="py-3.5 px-4 font-mono text-emerald-600 font-extrabold">${log.healthyProb}</td>
-                    <td class="py-3.5 px-4 font-mono text-rose-600 font-extrabold">${log.sickProb}</td>
-                    <td class="py-3.5 px-4">
-                        <select onchange="updateLogDisease(${log.id}, this.value)" class="bg-slate-100 border rounded px-2 py-1 text-xs font-semibold focus:outline-none">${optionsHtml}</select>
-                    </td>
-                    <td class="py-3.5 px-4 text-center">
-                        <button onclick="deleteLogEntry(${log.id})" class="text-slate-400 hover:text-red-500"><i class="fa-regular fa-trash-can"></i></button>
-                    </td>`;
-                tbody.appendChild(tr);
-            });
-        }
+                    `
+                },
+                unknown: { title: `<i class="fa-solid fa-microscope text-slate-500"></i> 植物學觀察指引`, borderClass: 'border-l-4 border-l-slate-400', content: `<div class="text-center py-8 text-slate-500"><p class="text-sm font-semibold">請對準植物葉片進行實時觀測...</p></div>` }
+            };
 
-        function viewFullImage(imageSrc) { if (!imageSrc) return; const modal = document.getElementById('image-modal'); document.getElementById('modal-img').src = imageSrc; modal.classList.remove('hidden'); }
-        function closeImageModal() { document.getElementById('image-modal').classList.add('hidden'); }
-        function updateLogDisease(id, val) { const idx = experimentLogs.findIndex(l => l.id === id); if (idx !== -1) experimentLogs[idx].diseaseSelected = val; }
-        function deleteLogEntry(id) { experimentLogs = experimentLogs.filter(l => l.id !== id); renderLogTable(); }
-
-        function clearLog() {
-            if (experimentLogs.length === 0) return;
-            const clearBtn = document.getElementById('btn-clear-log');
-            const clearText = document.getElementById('clear-log-text');
-            if (!isClearConfirmMode) {
-                isClearConfirmMode = true;
-                clearBtn.className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-600 text-white font-bold text-xs";
-                clearText.innerText = "再次點擊以確認清空！";
-                clearConfirmTimeout = setTimeout(() => resetClearButton(), 3000);
-            } else {
-                clearTimeout(clearConfirmTimeout);
-                experimentLogs = []; renderLogTable(); resetClearButton();
-                showToast("數據已完全清空！", "info");
+            function showBotanyKnowledge(type) {
+                const p = document.getElementById('knowledge-panel');
+                const data = BOTANY_DATABASE[type];
+                if (data) {
+                    p.className = `glass-panel rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col gap-4 lg:min-h-[300px] ${data.borderClass}`;
+                    document.getElementById('knowledge-title').innerHTML = data.title;
+                    document.getElementById('knowledge-content').innerHTML = data.content;
+                }
             }
-        }
 
-        function resetClearButton() {
-            isClearConfirmMode = false;
-            document.getElementById('btn-clear-log').className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-50 border border-red-200 text-red-600 font-semibold text-xs";
-            document.getElementById('clear-log-text').innerText = "清空日誌";
-        }
+            // 截取並鎖定當前畫面
+            function captureWebcamSnapshot() {
+                if (!isWebcamOn || !webcam) {
+                    showToast("請先啟動視訊鏡頭！", "error");
+                    return;
+                }
 
-        function exportCSV() {
-            if (experimentLogs.length === 0) return;
-            let csvContent = "\uFEFF紀錄時間,觀測來源,AI判定狀態,健康信心度,生病信心度,現場病害診斷\n";
-            experimentLogs.forEach(log => { csvContent += `${log.timestamp},${log.source},${log.status},${log.healthyProb},${log.sickProb},"${log.diseaseSelected}"\n`; });
-            const link = document.createElement("a");
-            link.setAttribute("href", URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })));
-            link.setAttribute("download", `植物葉片健康AI檢測日誌.csv`);
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        }
-    </script>
+                const flash = document.getElementById('camera-flash');
+                flash.classList.remove('opacity-0'); flash.classList.add('opacity-100');
+                setTimeout(() => { flash.classList.remove('opacity-100'); flash.classList.add('opacity-0'); }, 150);
+
+                try {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = 640; tempCanvas.height = 480;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(webcam.canvas, 0, 0, 640, 480);
+                    webcamSnapshot = tempCanvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // 同步鎖定當下的 AI 信心度
+                    webcamSnapshotPredictions = { ...currentPredictions };
+                    showToast("📸 畫面與數據已鎖定！可以點擊下方寫入實驗日誌囉。", "success");
+                } catch (err) {
+                    console.warn("擷取畫面失敗", err);
+                }
+            }
+
+            // 【核心修改】寫入日誌邏輯
+            function recordToLog() {
+                // 檢查是否有截圖暫存
+                if (!webcamSnapshot) {
+                    showToast("⚠️ 請先點擊視訊畫面內下方的「截圖鎖定」按鈕，再寫入實驗日誌！", "error");
+                    return; // 直接攔截，不往下執行
+                }
+
+                // 若有暫存，則直接取出使用
+                const capturedImageSrc = webcamSnapshot;
+                const sourceText = activeInputSource === 'webcam' ? "視訊鏡頭" : "上載圖片";
+
+                addSnapshotToLog(capturedImageSrc, sourceText, true, true);
+
+                // 寫入完畢後，如果是視訊鏡頭模式則清空暫存（強迫下一張必須重新截圖）
+                if (activeInputSource === 'webcam') {
+                    webcamSnapshot = null;
+                    webcamSnapshotPredictions = null;
+                }
+            }
+
+            function addSnapshotToLog(imgDataUrl, sourceText, isCompleteRecord = true, useSnapshot = false) {
+                const now = new Date();
+                const timestamp = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+
+                let hPercent, sPercent, statusText;
+
+                if (isCompleteRecord) {
+                    const targetPreds = (useSnapshot && webcamSnapshotPredictions) ? webcamSnapshotPredictions : currentPredictions;
+                    hPercent = (targetPreds.healthy * 100).toFixed(2) + "%";
+                    sPercent = (targetPreds.sick * 100).toFixed(2) + "%";
+                    statusText = targetPreds.healthy > targetPreds.sick ? "健康" : "生病";
+                } else {
+                    hPercent = "---"; sPercent = "---"; statusText = "未辨識";
+                }
+
+                experimentLogs.push({
+                    id: Date.now(),
+                    timestamp: timestamp,
+                    source: sourceText,
+                    status: statusText,
+                    healthyProb: hPercent,
+                    sickProb: sPercent,
+                    diseaseSelected: "健康葉片",
+                    imageSrc: imgDataUrl
+                });
+                renderLogTable();
+                showToast("成功將辨識數據與葉片照片寫入日誌！", "success");
+            }
+
+            function renderLogTable() {
+                const tbody = document.getElementById('log-table-body');
+                tbody.innerHTML = "";
+                if (experimentLogs.length === 0) {
+                    tbody.innerHTML = `<tr id="empty-row"><td colspan="7" class="py-8 px-4 text-center text-slate-400"><i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>尚未紀錄任何觀測數據。</td></tr>`;
+                    return;
+                }
+
+                experimentLogs.forEach((log) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 border-b border-slate-100";
+                    let statusBadge = log.status === "健康" ? `<span class="px-2.5 py-1 text-xs rounded-full font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">健康</span>` : `<span class="px-2.5 py-1 text-xs rounded-full font-bold bg-rose-50 text-rose-700 border border-rose-200">生病</span>`;
+                    
+                    let optionsHtml = '';
+                    DISEASE_OPTIONS.forEach(opt => { optionsHtml += `<option value="${opt}" ${log.diseaseSelected === opt ? 'selected' : ''}>${opt}</option>`; });
+
+                    tr.innerHTML = `
+                        <td class="py-3.5 px-4 font-mono text-xs text-slate-500">${log.timestamp}</td>
+                        <td class="py-3.5 px-4 text-xs font-semibold">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0 cursor-zoom-in" onclick="viewFullImage('${log.imageSrc}')">
+                                    <img src="${log.imageSrc}" class="w-full h-full object-cover">
+                                </div>
+                                <span>${log.source}</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">${statusBadge}</td>
+                        <td class="py-3.5 px-4 font-mono text-emerald-600 font-extrabold">${log.healthyProb}</td>
+                        <td class="py-3.5 px-4 font-mono text-rose-600 font-extrabold">${log.sickProb}</td>
+                        <td class="py-3.5 px-4">
+                            <select onchange="updateLogDisease(${log.id}, this.value)" class="bg-slate-100 border rounded px-2 py-1 text-xs font-semibold focus:outline-none">${optionsHtml}</select>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <button onclick="deleteLogEntry(${log.id})" class="text-slate-400 hover:text-red-500"><i class="fa-regular fa-trash-can"></i></button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function viewFullImage(imageSrc) { if (!imageSrc) return; const modal = document.getElementById('image-modal'); document.getElementById('modal-img').src = imageSrc; modal.classList.remove('hidden'); }
+            function closeImageModal() { document.getElementById('image-modal').classList.add('hidden'); }
+            function updateLogDisease(id, val) { const idx = experimentLogs.findIndex(l => l.id === id); if (idx !== -1) experimentLogs[idx].diseaseSelected = val; }
+            function deleteLogEntry(id) { experimentLogs = experimentLogs.filter(l => l.id !== id); renderLogTable(); }
+
+            function clearLog() {
+                if (experimentLogs.length === 0) return;
+                const clearBtn = document.getElementById('btn-clear-log');
+                const clearText = document.getElementById('clear-log-text');
+                if (!isClearConfirmMode) {
+                    isClearConfirmMode = true;
+                    clearBtn.className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-600 text-white font-bold text-xs";
+                    clearText.innerText = "再次點擊以確認清空！";
+                    clearConfirmTimeout = setTimeout(() => resetClearButton(), 3000);
+                } else {
+                    clearTimeout(clearConfirmTimeout);
+                    experimentLogs = []; renderLogTable(); resetClearButton();
+                    showToast("數據已完全清空！", "info");
+                }
+            }
+
+            function resetClearButton() {
+                isClearConfirmMode = false;
+                document.getElementById('btn-clear-log').className = "flex-grow sm:flex-initial flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-red-50 border border-red-200 text-red-600 font-semibold text-xs";
+                document.getElementById('clear-log-text').innerText = "清空日誌";
+            }
+
+            function exportCSV() {
+                if (experimentLogs.length === 0) return;
+                let csvContent = "\uFEFF紀錄時間,觀測來源,AI判定狀態,健康信心度,生病信心度,現場病害診斷\n";
+                experimentLogs.forEach(log => { csvContent += `${log.timestamp},${log.source},${log.status},${log.healthyProb},${log.sickProb},"${log.diseaseSelected}"\n`; });
+                const link = document.createElement("a");
+                link.setAttribute("href", URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })));
+                link.setAttribute("download", `植物葉片健康AI檢測日誌.csv`);
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            }
+        </script>
 </body>
 </html>
